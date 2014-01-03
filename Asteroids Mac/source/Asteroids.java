@@ -14,7 +14,7 @@ import java.io.IOException;
 public class Asteroids extends PApplet {
 
 
-int livesAlloted=3;
+int livesAlloted;
 
 class Motion{
   float angle;
@@ -492,7 +492,8 @@ float levelTimeLeft=levelTimeTotal;
 float levelTimeCounter=0;
 int levelOn=1;
 
-
+int shotsFired=0;
+int shotsHit=0;
 
 public void setup(){
   
@@ -562,28 +563,33 @@ public void draw(){
     
   
   else if(paused && !countingDown){
-    textFont(myBigFont);
-    textAlign(CENTER);
-    text("PAUSED", 500, 100);
     
-    textFont(myFont);
+    
     if(!showRules){
+      
+      textFont(myBigFont);
+      textAlign(CENTER);
+      text("PAUSED", 500, 100);
+      textFont(myFont);
       text("Press 'r' to restart", 500, 140);
       text("Press 'p' to toggle pause", 500, 160);
     }  
     
     String newLine="\n";
     if(showRules){ 
+      print("getting 123");
       int spaceBetween=40;
-      text("Press 'p' to play now and toggle pause", 500, 120);
+      textFont(myFont);
+      textAlign(CENTER);
+      text("Press 'p' to toggle pause", 500, 100);
       text("Press W, A, D or up, left, right arrow keys to move forward, rotate left, rotate right", 500, 120+spaceBetween);
-      text("Press SPACE, 'z', or click to shoot", 500, 120+2*spaceBetween);
-      text("You have three lives and 40 ammo to start off with", 500, 120+3*spaceBetween);
-      text("Everytime you hit an asteroid you get +1 ammo", 500, 120+4*spaceBetween);
-      text("Every level lasts 30 seconds", 500, 120+5*spaceBetween);
+      text("Press SPACE, 'z', or click to shoot", 500, 100+2*spaceBetween);
+      text("You have three lives and 40 ammo to start off with", 500, 100+3*spaceBetween);
+      text("Everytime you hit an asteroid you get +1 ammo", 500, 100+4*spaceBetween);
+      text("Every level lasts 30 seconds", 500, 100+5*spaceBetween);
       text("Every time a level ends you get replenished ammo and replenished lives,\nbut you get less ammo every level and the asteroids come faster and harder", 500, 120+6*spaceBetween); 
       textFont(myBigFont);
-      text("GOOD LUCK!", 500, 120+9*spaceBetween); 
+      text("Press:\n '1' for easy, '2' for normal,\n '3' for hard, '4' for insanity", 500, 100+9*spaceBetween); 
     
     }
    
@@ -615,6 +621,15 @@ public void draw(){
   }
   
   if(gameOver){
+    float shotsyHit=shotsHit;
+    float shotsyFired=shotsFired;
+    float accur;
+    if(shotsyHit==0 || shotsyFired==0){
+      accur=0.0f;
+    } 
+    else{
+      accur=(shotsyHit/shotsyFired)*100;
+    }
     background(0);
     fill(167, 17, 17);
     stroke(167, 17, 17);
@@ -626,7 +641,8 @@ public void draw(){
     text("Your score was: "+score, 500, 400);
     text("Your level was: "+levelOn, 500, 450);
     text("You died "+deathCounter+" times", 500, 500);
-    text("Press 'b' to play again", 500, 550);
+    text("You had "+accur+"% accuracy", 500, 550);
+    text("Press '1' for easy, '2' for normal, '3' for hard, '4' for insanity", 500, 600);
   }
   
   
@@ -703,6 +719,7 @@ public void checkAsteroidHit(int i){
       }
       if(dist(asteroids.get(i).centerX, asteroids.get(i).centerY, myProjectiles[j].xPos, myProjectiles[j].yPos)<=asteroids.get(i).radius){
         ammoLeft++;
+        shotsHit++;
         if(asteroids.get(i).size==1){
           asteroids.remove(i);
           asteroidMotion.remove(i);
@@ -804,6 +821,7 @@ public void shot(){
   projectileMotion[projectNumCount]=new Motion(spaceshipMotion.angle, 10, 0, 0, 0, 0, 0, 15, false);
   projectNumCount++;
   ammoLeft--;
+  shotsFired++;
 }
 
 public void keyPressed(){ // 38 is forward arrow, 37 is left arrow, 40 is back arrow, 39 is right arrow
@@ -904,7 +922,7 @@ public void keyReleased(){
 public void keyTyped(){
   if(!countingDown){
     if((key=='p' || key=='P') && !countingDown){
-      if(paused){
+      if(paused && !showRules){
         countingDown=true;
         countDownLeft=3;
       }
@@ -920,8 +938,41 @@ public void keyTyped(){
       paused=false;
     }
     
+    
+    
   }
-  if((key=='b' || key=='B') && gameOver){
+  
+  if((key=='1' || key=='2' || key=='3' || key=='4') && showRules){
+    if(key=='1'){
+        livesAlloted=6;
+      }
+      else if(key=='2'){
+        livesAlloted=4;
+      }
+      else if(key=='3'){
+        livesAlloted=3; 
+      }
+      else if(key=='4'){
+        livesAlloted=2;
+      }
+      paused=false;
+      showRules=false;
+      mySpaceship.lives=livesAlloted;
+  }
+  
+  if((key=='1' || key=='2' || key=='3' || key=='4') && gameOver){
+      if(key=='1'){
+        livesAlloted=6;
+      }
+      else if(key=='2'){
+        livesAlloted=4;
+      }
+      else if(key=='3'){
+        livesAlloted=3; 
+      }
+      else if(key=='4'){
+        livesAlloted=2;
+      }
       gameOver=false;
       mySpaceship.lives=livesAlloted;
       ammoCount=40;
@@ -933,11 +984,15 @@ public void keyTyped(){
       speedRange=5;
       asteroidSpawnChance=40;
       score=0;
-      showRules=true;
       //countDown=true;
       deathCounter=0;
+      
+      showRules=false;
+      paused=false;
       countingDown=true;
       countDownLeft=3;
+      shotsFired=0;
+      shotsHit=0;
     }
 }
 
