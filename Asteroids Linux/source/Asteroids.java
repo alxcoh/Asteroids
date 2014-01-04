@@ -281,6 +281,7 @@ class Spaceship{
     mySpaceship.move(spaceshipMotion);
     if(upPressed) flameOn=true;
     else  flameOn=false;
+    if(countingDown) flameOn=false;
     updateFlame();
     stroke(mySpaceship.col);
     quad(0, -20, -15, 20, 0, 0, 15, 20);
@@ -384,8 +385,6 @@ class Asteroid{
       if(i%2==1) yPs[i]=-yPs[i];
     }
 
-
-    
     
   }
   
@@ -423,6 +422,9 @@ class Asteroid{
     line(xPs[0], yPs[0], xPs[1], yPs[1]);
     line(xPs[numOfPoints-1], yPs[numOfPoints-1], xPs[numOfPoints-2], yPs[numOfPoints-2]); 
     
+    //noFill();
+    //ellipse(0, 0, (int)radius*2, (int)radius*2);
+    
     popMatrix();
   }
   
@@ -451,6 +453,8 @@ boolean showRules=true;
 
 boolean stoppedGoingDir=false; //true is up
 
+boolean shotPressed=false;
+
 float angleAtStop;
 int ammoCount=40;
 int ammoLeft=ammoCount;
@@ -466,10 +470,10 @@ PFont myFont;
 PFont myBigFont;
 
 float goSpeed=2.5f;
-float rotSpeed=3;
+float rotSpeed=4;
 int projectNumCount=0;
-int projectileDelay=10;
-int delayCount= 0;
+int projectileDelay=15;
+int delayCount=0;
 
 int asteroidSpawnChance=40;
 
@@ -519,7 +523,7 @@ public void draw(){
     background(0); 
     int spawnHappen=(int)random(asteroidSpawnChance); 
     if(spawnHappen==0) spawnAsteroid(speedRange, false, -300, -300, 3);
-    
+    if(countingDown) mySpaceship.flameOn=false;
     mySpaceship.render();
     fill(255);
     stroke(255);
@@ -532,7 +536,9 @@ public void draw(){
     text(mySpaceship.lives, 980, 20);
     textAlign(CENTER);
     text("Score: "+score, 500, 20);
-    
+    if(shotPressed && delayCount==0 && ammoLeft>0){
+      shot();
+    }
     if(levelTimeLeft>10){
       fill(255);
       stroke(255);
@@ -554,7 +560,7 @@ public void draw(){
     
   }
   
-  if(!countingDown && !paused){
+  if(!countingDown && !paused && !gameOver){
     dealWithProjectiles();
     dealWithAsteroids();
     countLevel();
@@ -562,7 +568,7 @@ public void draw(){
     
     
   
-  else if(paused && !countingDown){
+  else if((paused || showRules)&& !countingDown){
     
     
     if(!showRules){
@@ -577,14 +583,13 @@ public void draw(){
     
     String newLine="\n";
     if(showRules){ 
-      print("getting 123");
       int spaceBetween=40;
       textFont(myFont);
       textAlign(CENTER);
       text("Press 'p' to toggle pause", 500, 100);
       text("Press W, A, D or up, left, right arrow keys to move forward, rotate left, rotate right", 500, 120+spaceBetween);
       text("Press SPACE, 'z', or click to shoot", 500, 100+2*spaceBetween);
-      text("You have three lives and 40 ammo to start off with", 500, 100+3*spaceBetween);
+      text("You have a certain amount of lives determined by your difficulty and 40 ammo to start off with", 500, 100+3*spaceBetween);
       text("Everytime you hit an asteroid you get +1 ammo", 500, 100+4*spaceBetween);
       text("Every level lasts 30 seconds", 500, 100+5*spaceBetween);
       text("Every time a level ends you get replenished ammo and replenished lives,\nbut you get less ammo every level and the asteroids come faster and harder", 500, 120+6*spaceBetween); 
@@ -597,6 +602,7 @@ public void draw(){
   
   else if(countingDown){
     countdown();
+    mySpaceship.flameOn=false;
     fill(0);
     rectMode(CENTER);
     noStroke();
@@ -743,7 +749,6 @@ public void checkAsteroidHit(int i){
           }
           asteroids.remove(i);
           asteroidMotion.remove(i);
-          
         }
         score+=100;
         if(projectileMotion[j].xVel<0) myProjectiles[j].xPos=-10000;
@@ -809,6 +814,12 @@ public void countdown(){
   if(countDownLeft<=0){
     countingDown=false;
     paused=false;
+    mySpaceship.flameOn=false;
+    upPressed=false;
+    backPressed=false;
+    rightPressed=false;
+    leftPressed=false;
+    shotPressed=false;
   }
 }
 
@@ -866,8 +877,8 @@ public void keyPressed(){ // 38 is forward arrow, 37 is left arrow, 40 is back a
         spaceshipMotion.angleVel=radians(rotSpeed);
       }
      
-      if((key=='z' || key=='Z' || keyCode==32) && delayCount==0 && ammoLeft>0){
-        shot();
+      if((key=='z' || key=='Z' || keyCode==32)&& !gameOver){
+        shotPressed=true;
       }
     }
   }
@@ -916,12 +927,18 @@ public void keyReleased(){
         spaceshipMotion.angleVel=0;
       }
     }
+    
+    if(key=='z' || key=='Z' || keyCode==32){
+        shotPressed=false;
+      }
+    
   }
+  
 }
 
 public void keyTyped(){
   if(!countingDown){
-    if((key=='p' || key=='P') && !countingDown){
+    if((key=='p' || key=='P') && !countingDown && !showRules){
       if(paused && !showRules){
         countingDown=true;
         countDownLeft=3;
@@ -945,18 +962,31 @@ public void keyTyped(){
   if((key=='1' || key=='2' || key=='3' || key=='4') && showRules){
     if(key=='1'){
         livesAlloted=6;
+        ammoCount=80;
+        projectileDelay=10;
+        ammoLeft=ammoCount;
       }
       else if(key=='2'){
         livesAlloted=4;
+        ammoCount=40;
+        projectileDelay=15;
+        ammoLeft=ammoCount;
       }
       else if(key=='3'){
         livesAlloted=3; 
+        ammoCount=35;
+        projectileDelay=15;
+        ammoLeft=ammoCount;
       }
       else if(key=='4'){
+        ammoCount=10;
+        projectileDelay=30;
+        ammoLeft=ammoCount;
         livesAlloted=2;
       }
       paused=false;
       showRules=false;
+      countingDown=true;
       mySpaceship.lives=livesAlloted;
   }
   
@@ -975,7 +1005,6 @@ public void keyTyped(){
       }
       gameOver=false;
       mySpaceship.lives=livesAlloted;
-      ammoCount=40;
       ammoLeft=ammoCount;
       levelOn=1;
       levelTimeLeft=30;
@@ -997,11 +1026,15 @@ public void keyTyped(){
 }
 
 public void mousePressed(){
-  if(!countingDown){
-    if(delayCount==0 && ammoLeft>0){
-        shot();
+  if(!countingDown && !paused){
+    if(!gameOver){
+        shotPressed=true;
       }
   }
+}
+
+public void mouseReleased(){
+  shotPressed=false;
 }
   static public void main(String[] passedArgs) {
     String[] appletArgs = new String[] { "Asteroids" };
