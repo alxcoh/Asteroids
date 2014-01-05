@@ -304,9 +304,9 @@ class Spaceship{
     stroke(mySpaceship.col);
     if(showStuff) stroke(mySpaceship.col, 75);
     quad(0, -20, -15, 20, 0, 0, 15, 20);
-    fill(255);
-    ellipse(0, -20, 3, 3);
     if(showStuff){
+      fill(255);
+      ellipse(0, -20, 3, 3);
       noFill();
       stroke(255);
       ellipse(0, 0, 20, 20);
@@ -353,6 +353,7 @@ class Asteroid{
   float xPs[]=new float[100];
   float yPs[]=new float[100];
   
+  boolean grazed;
   
   float radius;
   
@@ -366,6 +367,7 @@ class Asteroid{
     numOfPoints=n; 
     genPoints();
     col=color(c1, c2, c3);
+    grazed=false;
   }
   
   void genPoints(){
@@ -490,6 +492,7 @@ float angleAtStop;
 int ammoCount=40;
 int ammoLeft=ammoCount;
 
+int timesGrazed=0;
 
 
 Projectile myProjectiles[]=new Projectile[200];
@@ -513,7 +516,7 @@ int asteroidSpawnChance=40;
 
 int score=0; 
 
-int speedRange=5;
+float speedRange=5;
 
 boolean countingDown=false;
 int countDownCounter=0;
@@ -533,6 +536,8 @@ float levelTimeTotal=30;
 float levelTimeLeft=levelTimeTotal;
 float levelTimeCounter=0;
 int levelOn=1;
+
+int astyPlus=100;
 
 int shotsFired=0;
 int shotsHit=0;
@@ -592,13 +597,15 @@ public void draw(){
     text(ammoLeft, 120, 20);
     textAlign(RIGHT);
     text("Lives left: "+mySpaceship.lives, 990, 20);
+    text("Times grazed: "+timesGrazed, 990, 40);
     textAlign(CENTER);
     text("Score: "+score, 500, 20);
     if(levelTimeLeft>10){
       fill(255);
       stroke(255);
-      text("Level: "+levelOn+"       Level time left: "+levelTimeLeft, 500, 40);
+      text("Level: "+levelOn+"       Level time left: "+String.format("%.0f", levelTimeLeft), 500, 40);
     }
+    
     
     
     else{
@@ -716,7 +723,8 @@ public void draw(){
     text("Your level was: "+levelOn, 500, 450);
     text("You died "+deathCounter+" times", 500, 500);
     text("You had "+accur+"% accuracy", 500, 550);
-    text("Press '1' for easy, '2' for normal, '3' for hard, '4' for insanity", 500, 600);
+    text("You were grazed "+timesGrazed+" times", 500, 600);
+    text("Press '1' for easy, '2' for normal, '3' for hard, '4' for insanity", 500, 650);
   }
   fill(255);
   stroke(255);
@@ -749,13 +757,15 @@ void countLevel(){
   if(levelTimeLeft<=0){
     turnCountDownOn();
     if(ammoCount-((2*levelOn)-1)>=3) ammoLeft=ammoCount-((2*levelOn)-1);
-    if(asteroidSpawnChance>10) asteroidSpawnChance-=5;
-    speedRange+=2;
+    if(asteroidSpawnChance>10) asteroidSpawnChance-=3;
+    speedRange+=1.5;
     levelOn++;
     levelTimeLeft=levelTimeTotal;
     levelTimeCounter=0;
     mySpaceship.hit();
     gameOver=false;
+    astyPlus+=50;
+    score+=3000+((levelOn-2)*1000);
     mySpaceship.lives=livesAlloted;
   }
 }
@@ -841,7 +851,7 @@ void asteroidHit(int i, boolean easter, int j){
       asteroids.remove(i);
       asteroidMotion.remove(i);
     }
-    score+=100;
+    score+=astyPlus;
     if(projectileMotion[j].xVel<0) myProjectiles[j].xPos=-10000;
     else if(projectileMotion[j].xVel>=0) myProjectiles[j].xPos=10000;
     
@@ -909,8 +919,16 @@ boolean checkSpaceshipHit(int i){
     mySpaceship.hit();
     turnCountDownOn();
     deathCounter++;
+    timesGrazed--;
     return true;
   }
+  
+  else if((dist(asteroids.get(i).centerX, asteroids.get(i).centerY, mySpaceship.xMidPoint, mySpaceship.yMidPoint)<=asteroids.get(i).radius+37) && !asteroids.get(i).grazed){
+    timesGrazed++;
+    asteroids.get(i).grazed=true;
+    return false;
+  }
+  
   else return false;
 }
 
@@ -1361,6 +1379,7 @@ void keyTyped(){
       showStuff=false;
       ammoCount=40;
       projectileDelay=10;
+      timesGrazed=0;
     }
     if(key=='\n'){   
        if(texty.equals("alexisawesome")){
