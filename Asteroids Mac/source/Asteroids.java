@@ -13,11 +13,16 @@ import java.io.IOException;
 
 public class Asteroids extends PApplet {
 
-
+//NOTE: TO ACTIVATE SHOOTING WHILE HACKED,
+//MAKE SURE TO TAKE OUT PART WHERE IT DOESN'T CHECK IF ITS HACKED, 
+//THE PART WHERE IT DEALTH WITH THE PROJECTILES
+//AND THE PART IF IT CHECKS IF A PROJECTILE HITS AN ASTEROIDS
 int livesAlloted;
 
 class Motion{
+  
   float angle;
+  
   
   float xVel;
   float yVel;
@@ -53,6 +58,8 @@ class Motion{
   
   public void update(){
     angle+=angleVel;
+    
+    
     angleVel+=angleAccel;
     if(xVel>=0) xVel+=xAccel;
     else if(xVel<0) xVel-=xAccel;
@@ -65,6 +72,31 @@ class Motion{
       yAccel=0;
       xAccel=0;
     }  
+    
+    
+   
+   if(angle>radians(360)) angle%=radians(360);
+   else if(angle<-radians(360)) angle%=radians(-360);
+   /*
+   if(angle>0 && angle<radians(180)) angle=angle;
+   
+   else if(angle>radians(180)){
+        angle%=radians(180);
+        angle=-angle;
+        angle=PI+angle;
+      
+    }
+    
+    else if(angle<0 && angle>radians(-180)){
+      angle=angle;
+    }
+    
+    else if(angle<radians(-180)){
+      angle%=radians(-180);
+      angle=-angle;
+      angle=PI-angle;
+    }
+    */
 }
   
   public void getAngleWithRat(){
@@ -283,8 +315,20 @@ class Spaceship{
     else  flameOn=false;
     if(countingDown) flameOn=false;
     updateFlame();
+    
     stroke(mySpaceship.col);
+    if(showStuff) stroke(mySpaceship.col, 75);
     quad(0, -20, -15, 20, 0, 0, 15, 20);
+    fill(255);
+    ellipse(0, -20, 3, 3);
+    if(showStuff){
+      noFill();
+      stroke(255);
+      ellipse(0, 0, 20, 20);
+      stroke(255, 0, 0, 150);
+      if(shotPressed) line(0, -20, 0, -100000);
+    }
+    
     popMatrix();
   }
   
@@ -422,9 +466,11 @@ class Asteroid{
     line(xPs[0], yPs[0], xPs[1], yPs[1]);
     line(xPs[numOfPoints-1], yPs[numOfPoints-1], xPs[numOfPoints-2], yPs[numOfPoints-2]); 
     
-    //noFill();
-    //ellipse(0, 0, (int)radius*2, (int)radius*2);
     
+    if(showStuff){
+      noFill();
+      ellipse(0, 0, (int)radius*2, (int)radius*2);
+    }
     popMatrix();
   }
   
@@ -468,9 +514,12 @@ int deathCounter=0;
 
 PFont myFont;
 PFont myBigFont;
+PFont mySmallFont;
 
 float goSpeed=2.5f;
+boolean showStuff=false;
 float rotSpeed=4;
+
 int projectNumCount=0;
 int projectileDelay=15;
 int delayCount=0;
@@ -491,6 +540,10 @@ boolean gameOver=false;
 
 boolean paused=true;
 
+boolean mousyPressed=false;
+
+String texty="";
+
 float levelTimeTotal=30;
 float levelTimeLeft=levelTimeTotal;
 float levelTimeCounter=0;
@@ -508,8 +561,31 @@ public void setup(){
   smooth();
   myFont=loadFont("Serif-20.vlw");
   myBigFont=loadFont("Serif-48.vlw");
+  mySmallFont=loadFont("Serif-10.vlw");
+  
   asteroids=new ArrayList<Asteroid>();
   asteroidMotion=new ArrayList<Motion>();
+  
+  
+  if(showRules){ 
+      int spaceBetween=40;
+      textFont(myFont);
+      textAlign(CENTER);
+      text("Press 'p' to toggle pause", 500, 100);
+      text("Press W, A, D or up, left, right arrow keys to move forward, rotate left, rotate right", 500, 120+spaceBetween);
+      text("Press SPACE, 'z', or click to shoot", 500, 100+2*spaceBetween);
+      text("You have a certain amount of lives determined by your difficulty and 40 ammo to start off with", 500, 100+3*spaceBetween);
+      text("Everytime you hit an asteroid you get +1 ammo", 500, 100+4*spaceBetween);
+      text("Every level lasts 30 seconds", 500, 100+5*spaceBetween);
+      text("Every time a level ends you get replenished ammo and replenished lives,\nbut you get less ammo every level and the asteroids come faster and harder", 500, 120+6*spaceBetween); 
+      textFont(myBigFont);
+      text("Press:\n '1' for easy, '2' for normal,\n '3' for hard, '4' for insanity", 500, 100+9*spaceBetween); 
+      textFont(myFont);
+      textAlign(RIGHT);
+      textMode(MODEL);
+      text(texty, 990, 690);
+    }
+  
 }
 
 
@@ -521,8 +597,6 @@ public void draw(){
   if(!paused){
     showRules=false;
     background(0); 
-    int spawnHappen=(int)random(asteroidSpawnChance); 
-    if(spawnHappen==0) spawnAsteroid(speedRange, false, -300, -300, 3);
     if(countingDown) mySpaceship.flameOn=false;
     mySpaceship.render();
     fill(255);
@@ -532,13 +606,9 @@ public void draw(){
     text("Ammo Left: ", 10, 20);
     text(ammoLeft, 120, 20);
     textAlign(RIGHT);
-    text("Lives left: ", 970, 20);
-    text(mySpaceship.lives, 980, 20);
+    text("Lives left: "+mySpaceship.lives, 990, 20);
     textAlign(CENTER);
     text("Score: "+score, 500, 20);
-    if(shotPressed && delayCount==0 && ammoLeft>0){
-      shot();
-    }
     if(levelTimeLeft>10){
       fill(255);
       stroke(255);
@@ -561,6 +631,14 @@ public void draw(){
   }
   
   if(!countingDown && !paused && !gameOver){
+    int spawnHappen=(int)random(asteroidSpawnChance); 
+    if(spawnHappen==0) spawnAsteroid(speedRange, false, -300, -300, 3);
+    if(mousyPressed){
+      mouseMove();
+    }
+    if(shotPressed && delayCount==0 && ammoLeft>0){
+      shot();
+    }
     dealWithProjectiles();
     dealWithAsteroids();
     countLevel();
@@ -582,7 +660,10 @@ public void draw(){
     }  
     
     String newLine="\n";
+    
     if(showRules){ 
+      background(0);
+      
       int spaceBetween=40;
       textFont(myFont);
       textAlign(CENTER);
@@ -595,9 +676,11 @@ public void draw(){
       text("Every time a level ends you get replenished ammo and replenished lives,\nbut you get less ammo every level and the asteroids come faster and harder", 500, 120+6*spaceBetween); 
       textFont(myBigFont);
       text("Press:\n '1' for easy, '2' for normal,\n '3' for hard, '4' for insanity", 500, 100+9*spaceBetween); 
-    
+      textFont(mySmallFont);
+      textAlign(RIGHT);
+      textMode(MODEL);
     }
-   
+     
   }
   
   else if(countingDown){
@@ -650,7 +733,12 @@ public void draw(){
     text("You had "+accur+"% accuracy", 500, 550);
     text("Press '1' for easy, '2' for normal, '3' for hard, '4' for insanity", 500, 600);
   }
-  
+  fill(255);
+  stroke(255);
+  textFont(mySmallFont);
+  textAlign(RIGHT);
+  textMode(MODEL);
+  text(texty, 990, 690);
   
 }
 
@@ -688,19 +776,21 @@ public void countLevel(){
 }
 
 public void dealWithProjectiles(){
-  if(projectNumCount==100){
-      projectNumCount=1;
-    }
-    for(int i=0; i<projectNumCount; i++){
-      projectileMotion[i].getVels();
-      myProjectiles[i].moveProjectile(projectileMotion[i]);
-      myProjectiles[i].render();
-    }
-    if(delayCount==projectileDelay){
-      delayCount=0;
-      counting=false;
-    }
-    else if(counting) delayCount++;
+  if(!showStuff){
+    if(projectNumCount==200){
+        projectNumCount=1;
+      }
+      for(int i=0; i<projectNumCount; i++){
+        projectileMotion[i].getVels();
+        myProjectiles[i].moveProjectile(projectileMotion[i]);
+        myProjectiles[i].render();
+      }
+      if(delayCount==projectileDelay){
+        delayCount=0;
+        counting=false;
+      }
+      else if(counting) delayCount++;
+  }
 }
 
 public void dealWithAsteroids(){
@@ -708,57 +798,120 @@ public void dealWithAsteroids(){
       if(asteroids.get(i).centerX>width+2000 || asteroids.get(i).centerX<-2000 || asteroids.get(i).centerY>height+2000 || asteroids.get(i).centerY<-2000){
         asteroids.remove(i);
         asteroidMotion.remove(i);
-        continue;
+        return;
       }
         asteroidMotion.get(i).update();
         asteroids.get(i).render(asteroidMotion.get(i));
+        if(showStuff){
+          
+          float xPosy=sin(spaceshipMotion.angle)*20;
+          float yPosy=-cos(spaceshipMotion.angle)*20;
+          for(int j=0; j<10000; j++){
+            if(asteroids.size()==i) return;
+            if(dist(lerp(mySpaceship.xMidPoint, mySpaceship.xMidPoint+xPosy, (j/20)+1), lerp(mySpaceship.yMidPoint, mySpaceship.yMidPoint+yPosy, (j/20)+1), asteroids.get(i).centerX, asteroids.get(i).centerY)<=asteroids.get(i).radius){
+              pushMatrix();
+              fill(255, 0, 0);
+              stroke(255, 0, 0);
+              ellipse(asteroids.get(i).centerX, asteroids.get(i).centerY, asteroids.get(i).radius*2, asteroids.get(i).radius*2);
+              popMatrix();
+              if(shotPressed){
+                asteroidHit(i, true, 0);
+              }
+              
+              
+              break;
+            }
+          }
+        }
         checkAsteroidHit(i);
         if(checkSpaceshipHit(i)) return;
   }
 }
 
-public void checkAsteroidHit(int i){
-  i=i;
-  for(int j=0; j<projectNumCount; j++){
-      if(i==asteroids.size()){
-        break;
-      }
-      if(dist(asteroids.get(i).centerX, asteroids.get(i).centerY, myProjectiles[j].xPos, myProjectiles[j].yPos)<=asteroids.get(i).radius){
-        ammoLeft++;
-        shotsHit++;
-        if(asteroids.get(i).size==1){
-          asteroids.remove(i);
-          asteroidMotion.remove(i);
-        }
-        else{
-          for(int k=-1; k<2; k+=2){
-            float distBetween=asteroids.get(i).radius/2;
-            float angly=projectileMotion[j].angle;
-            
-            angly+=radians(90); //perpendicular
-            
-            float xVely=sin(angly)*distBetween;
-            float yVely=-cos(angly)*distBetween;
-            
-            xVely*=k;
-            yVely*=k;
-            
-            float xPosy=asteroids.get(i).centerX+xVely;
-            float yPosy=asteroids.get(i).centerY+yVely;
-            spawnAsteroid(speedRange, true, xPosy, yPosy, asteroids.get(i).size-1);
-          }
-          asteroids.remove(i);
-          asteroidMotion.remove(i);
-        }
-        score+=100;
-        if(projectileMotion[j].xVel<0) myProjectiles[j].xPos=-10000;
-        else if(projectileMotion[j].xVel>=0) myProjectiles[j].xPos=10000;
-        
-        
-        if(projectileMotion[j].yVel<0) myProjectiles[j].yPos=-10000;
-        else if(projectileMotion[j].yVel>=0) myProjectiles[j].yPos=10000;
-      } 
+public void asteroidHit(int i, boolean easter, int j){
+  if(easter==false){
+    ammoLeft++;
+    shotsHit++;
+    if(asteroids.get(i).size==1){
+      asteroids.remove(i);
+      asteroidMotion.remove(i);
     }
+    else{
+      for(int k=-1; k<2; k+=2){
+        float distBetween=asteroids.get(i).radius/2;
+        float angly=projectileMotion[j].angle;
+        
+        angly+=radians(90); //perpendicular
+        
+        float xVely=sin(angly)*distBetween;
+        float yVely=-cos(angly)*distBetween;
+        
+        xVely*=k;
+        yVely*=k;
+        
+        float xPosy=asteroids.get(i).centerX+xVely;
+        float yPosy=asteroids.get(i).centerY+yVely;
+        spawnAsteroid(speedRange, true, xPosy, yPosy, asteroids.get(i).size-1);
+      }
+      asteroids.remove(i);
+      asteroidMotion.remove(i);
+    }
+    score+=100;
+    if(projectileMotion[j].xVel<0) myProjectiles[j].xPos=-10000;
+    else if(projectileMotion[j].xVel>=0) myProjectiles[j].xPos=10000;
+    
+    
+    if(projectileMotion[j].yVel<0) myProjectiles[j].yPos=-10000;
+    else if(projectileMotion[j].yVel>=0) myProjectiles[j].yPos=10000;
+  }
+  
+  
+  else{
+    ammoLeft++;
+    shotsHit++;
+    if(asteroids.get(i).size==1){
+      asteroids.remove(i);
+      asteroidMotion.remove(i);
+    }
+    else{
+      for(int k=-1; k<2; k+=2){
+        float distBetween=asteroids.get(i).radius/2;
+        float angly=spaceshipMotion.angle;
+        
+        angly+=radians(90); //perpendicular
+        
+        float xVely=sin(angly)*distBetween;
+        float yVely=-cos(angly)*distBetween;
+        
+        xVely*=k;
+        yVely*=k;
+        
+        float xPosy=asteroids.get(i).centerX+xVely;
+        float yPosy=asteroids.get(i).centerY+yVely;
+        spawnAsteroid(speedRange, true, xPosy, yPosy, asteroids.get(i).size-1);
+      }
+      asteroids.remove(i);
+      asteroidMotion.remove(i);
+    }
+    score+=100;
+
+  }
+  
+  
+}
+
+public void checkAsteroidHit(int i){
+  if(!showStuff){
+    i=i;
+    for(int j=0; j<projectNumCount; j++){
+        if(i==asteroids.size()){
+          break;
+        }
+        if(dist(asteroids.get(i).centerX, asteroids.get(i).centerY, myProjectiles[j].xPos, myProjectiles[j].yPos)<=asteroids.get(i).radius){
+          asteroidHit(i, false, j);
+        } 
+      }
+  }
 }
 
 public boolean checkSpaceshipHit(int i){
@@ -806,6 +959,9 @@ public void spawnAsteroid(float s, boolean pref, float xPosChoice, float yPosCho
 
 
 public void countdown(){
+  mousyPressed=false;
+  shotPressed=false;
+  spaceshipMotion.angle=0;
   countDownCounter++;
   if(countDownCounter==60){
     countDownCounter=0;
@@ -828,12 +984,195 @@ public void shot(){
   counting=true;
   float xPosy=sin(spaceshipMotion.angle)*20;
   float yPosy=-cos(spaceshipMotion.angle)*20;
-  myProjectiles[projectNumCount]=new Projectile(5, 255, 255, 255, false, 10, spaceshipMotion.angle, xPosy+mySpaceship.xMidPoint, yPosy+mySpaceship.yMidPoint, false);
-  projectileMotion[projectNumCount]=new Motion(spaceshipMotion.angle, 10, 0, 0, 0, 0, 0, 15, false);
+  if(!showStuff){
+    myProjectiles[projectNumCount]=new Projectile(5, 255, 255, 255, false, 10, spaceshipMotion.angle, xPosy+mySpaceship.xMidPoint, yPosy+mySpaceship.yMidPoint, false);
+    projectileMotion[projectNumCount]=new Motion(spaceshipMotion.angle, 10, 0, 0, 0, 0, 0, 15, false);
+  }
+  /*if(showStuff){
+    myProjectiles[projectNumCount]=new Projectile(5, 255, 255, 255, false, 10, spaceshipMotion.angle, xPosy+mySpaceship.xMidPoint, yPosy+mySpaceship.yMidPoint, false);
+    projectileMotion[projectNumCount]=new Motion(spaceshipMotion.angle, 15, 0, 0, 0, 0, 0, 15, false);
+    
+  */
   projectNumCount++;
   ammoLeft--;
   shotsFired++;
 }
+
+public float condenseAngle(float ay){
+  float a=ay;
+  if(a>radians(360)) a%=radians(360);
+  else if(a<-radians(360)) a%=-radians(360);
+  
+   if(a>0 && a<radians(180)){
+     a=a;
+     return a;
+   }
+   else if(a>radians(180)){
+        a%=radians(180);
+        a=-a;
+        a=PI+a;
+        return -a;
+    }
+    
+    else if(a<0 && a>radians(-180)){
+      a=a;
+      return a;
+    }
+
+    else if(a<radians(-180)){
+      a%=radians(-180);
+      a=-a;
+      a=PI-a;
+      return a;
+    }
+    
+    return 0;
+}
+
+public void mouseMove(){
+  
+  float xDif=mouseX-mySpaceship.xMidPoint;
+  float yDif=mouseY-mySpaceship.yMidPoint;
+  
+  
+  float predictAngle=atan(xDif/-yDif);  
+  if(yDif>0) predictAngle-=PI;
+  
+  
+  predictAngle=condenseAngle(predictAngle);
+  
+  
+  //println(degrees(predictAngle));
+  float angly=spaceshipMotion.angle;
+  
+  angly=condenseAngle(angly);
+  boolean goRight=false;
+  boolean goLeft=false;
+  
+  
+  if(angly==0){
+    if(predictAngle>0){
+      goRight=true;
+    }
+    else if(predictAngle<0) goLeft=true;
+    
+  }
+  if(!showStuff){
+    if(angly>0){
+      if(predictAngle>0){
+        float plusy=radians(1);
+        float rotFact=radians(rotSpeed)+plusy;
+        if(abs(predictAngle-angly)<=rotFact){
+          spaceshipMotion.angleVel=0;
+          return;
+        }
+        
+        if(predictAngle>angly){
+          goRight=true;
+        }
+        else if(angly>predictAngle){
+          goLeft=true;
+        }
+      }
+      
+      if(predictAngle<0){
+        float distForRight=0;
+        float distForLeft=0;
+        
+        distForRight=radians(180)-angly;
+        distForRight+=radians(180)-(abs(predictAngle));
+        //println("\nDist for right: "+distForRight);
+        
+        distForLeft=angly;
+        distForLeft+=abs(predictAngle);
+        // println("Dist for left: "+distForLeft+"\n");
+        if(distForLeft<distForRight){
+          //println("\nDist for left: "+distForLeft);
+          //println("DIst for right: "+distForRight+"\n");
+          goLeft=true;
+          goRight=false;
+          spaceshipMotion.angleVel=-radians(rotSpeed);
+          return;
+        }
+        if(distForRight<distForLeft){
+          goRight=true;
+          goLeft=false;
+          spaceshipMotion.angleVel=radians(rotSpeed);
+          return;
+        }
+      }
+      
+    }
+    
+   if(angly<0){
+     
+      if(predictAngle<0){
+        float plusy=radians(1);
+    
+        float rotFact=radians(rotSpeed)+plusy;
+        if(abs(predictAngle-angly)<=rotFact){
+
+          spaceshipMotion.angleVel=0;
+          return;
+        }
+        
+        if(predictAngle>angly){
+          goRight=true;
+        }
+        else if(angly>predictAngle){
+          goLeft=true;
+        }
+      }
+      
+      if(predictAngle>0){
+        float distForRight=0;
+        float distForLeft=0;
+        
+        distForRight=radians(180)-abs(angly);
+        distForRight+=radians(180)-predictAngle;
+        
+        distForLeft=abs(angly);
+        distForLeft+=predictAngle;
+        
+        if(distForRight>distForLeft){
+          //println("\nDist for left: "+distForLeft);
+          //println("DIst for right: "+distForRight+"\n");
+          goLeft=true;
+          goRight=false;
+          spaceshipMotion.angleVel=radians(rotSpeed);
+          return;
+        }
+        if(distForRight<distForLeft){
+          goRight=true;
+          goLeft=false;
+          spaceshipMotion.angleVel=-radians(rotSpeed);
+          return;
+        }
+      }
+      
+    }
+    if(goRight) spaceshipMotion.angleVel=radians(rotSpeed);
+    if(goLeft) spaceshipMotion.angleVel=radians(-rotSpeed);
+  }
+  
+  if(showStuff){
+    spaceshipMotion.angle=predictAngle;
+  }
+  /*
+  if(predictAngle>angly){
+    spaceshipMotion.angleVel=radians(rotSpeed);
+    return;
+  }
+  
+  else if(predictAngle<angly){
+    spaceshipMotion.angleVel=-radians(rotSpeed);
+  }
+  */
+  
+  //spaceshipMotion.angle=predictAngle;
+}
+
+
 
 public void keyPressed(){ // 38 is forward arrow, 37 is left arrow, 40 is back arrow, 39 is right arrow
   if(!countingDown){
@@ -882,6 +1221,7 @@ public void keyPressed(){ // 38 is forward arrow, 37 is left arrow, 40 is back a
       }
     }
   }
+
 }
 
 public void keyReleased(){
@@ -933,10 +1273,16 @@ public void keyReleased(){
       }
     
   }
-  
+  if (keyCode==8){
+    int textLength=texty.length();
+    if(textLength>1){
+      texty=texty.substring(0, texty.length()-2);
+    }
+  }
 }
 
 public void keyTyped(){
+  
   if(!countingDown){
     if((key=='p' || key=='P') && !countingDown && !showRules){
       if(paused && !showRules){
@@ -960,34 +1306,38 @@ public void keyTyped(){
   }
   
   if((key=='1' || key=='2' || key=='3' || key=='4') && showRules){
-    if(key=='1'){
-        livesAlloted=6;
-        ammoCount=80;
-        projectileDelay=10;
-        ammoLeft=ammoCount;
-      }
-      else if(key=='2'){
-        livesAlloted=4;
-        ammoCount=40;
-        projectileDelay=15;
-        ammoLeft=ammoCount;
-      }
-      else if(key=='3'){
-        livesAlloted=3; 
-        ammoCount=35;
-        projectileDelay=15;
-        ammoLeft=ammoCount;
-      }
-      else if(key=='4'){
-        ammoCount=10;
-        projectileDelay=30;
-        ammoLeft=ammoCount;
-        livesAlloted=2;
-      }
+    if(!showStuff){
+      if(key=='1'){
+          livesAlloted=6;
+          ammoCount=80;
+          projectileDelay=10;
+          ammoLeft=ammoCount;
+        }
+        else if(key=='2'){
+          livesAlloted=4;
+          ammoCount=40;
+          projectileDelay=15;
+          ammoLeft=ammoCount;
+        }
+        else if(key=='3'){
+          livesAlloted=3; 
+          ammoCount=35;
+          projectileDelay=15;
+          ammoLeft=ammoCount;
+        }
+        else if(key=='4'){
+          ammoCount=10;
+          projectileDelay=30;
+          ammoLeft=ammoCount;
+          livesAlloted=2;
+        }
+     }
+      
+      mySpaceship.lives=livesAlloted;
+      
       paused=false;
       showRules=false;
       countingDown=true;
-      mySpaceship.lives=livesAlloted;
   }
   
   if((key=='1' || key=='2' || key=='3' || key=='4') && gameOver){
@@ -1015,26 +1365,53 @@ public void keyTyped(){
       score=0;
       //countDown=true;
       deathCounter=0;
-      
+      mySpaceship.xMidPoint=500;
+      mySpaceship.yMidPoint=350;
       showRules=false;
       paused=false;
       countingDown=true;
       countDownLeft=3;
       shotsFired=0;
       shotsHit=0;
+      showStuff=false;
+      ammoCount=40;
+      projectileDelay=10;
     }
+    if(key=='\n'){   
+       if(texty.equals("alexisawesome")){
+          showStuff=true;
+          livesAlloted=1000000;
+          ammoCount=100000000;
+          ammoLeft=ammoCount;
+          projectileDelay=0;
+          mySpaceship.lives=livesAlloted;
+       }
+       else if(texty.equals("alexisntawesome") || texty.equals("alexisn'tawesome") || texty.equals("alexisnotawesome") || texty.equals("alexisadumbass") || texty.equals("dumbass") || texty.equals("alexsucks") || texty.equals("alexsuckz") || texty.equals("alexsuck")){
+         exit();
+       }
+       texty="";
+       
+    }
+    else if(key!=' ' && key!='1' && key!='2' && key!='3' && key!='4'){
+     texty+=key;
+   }  
+
 }
 
 public void mousePressed(){
   if(!countingDown && !paused){
     if(!gameOver){
-        shotPressed=true;
+        mousyPressed=true;
+        if(mouseButton==RIGHT) shotPressed=true;
+        
       }
   }
 }
 
 public void mouseReleased(){
-  shotPressed=false;
+  mousyPressed=false;
+  if(mouseButton==RIGHT) shotPressed=false;
+  spaceshipMotion.angleVel=0;
 }
   static public void main(String[] passedArgs) {
     String[] appletArgs = new String[] { "Asteroids" };
